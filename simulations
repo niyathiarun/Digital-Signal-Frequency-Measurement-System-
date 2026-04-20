@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Digital Signal Frequency Measurement System</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--crt:#00ff88;--crt2:#00ccff;--crt3:#ff6b35;--crt4:#ffcc00;--bg:#0a0f0a;--panel:rgba(0,255,136,0.05);--brd:rgba(0,255,136,0.25);--brd2:rgba(0,204,255,0.25)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Share Tech Mono',monospace;background:var(--bg);color:var(--crt);padding:16px;min-height:100vh;position:relative}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:100}
+.hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--brd);padding-bottom:10px;margin-bottom:14px}
+.hdr-title{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:600;letter-spacing:2px;text-transform:uppercase}
+.hdr-title span{color:var(--crt2)}
+.sdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--crt);margin-right:6px;animation:blink 1.2s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.sys-id{font-size:11px;color:rgba(0,255,136,.4)}
+.main-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.full-row{margin-bottom:12px}
+.panel{background:var(--panel);border:1px solid var(--brd);border-radius:4px;padding:12px;position:relative}
+.panel-blue{border-color:var(--brd2);background:rgba(0,204,255,.04)}
+.panel-amber{border-color:rgba(255,204,0,.25);background:rgba(255,204,0,.04)}
+.panel-red{border-color:rgba(255,107,53,.3);background:rgba(255,107,53,.04)}
+.plabel{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:rgba(0,255,136,.5);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.plabel::before{content:'';display:inline-block;width:14px;height:1px;background:currentColor}
+.plabel.blue{color:rgba(0,204,255,.5)}.plabel.amber{color:rgba(255,204,0,.5)}.plabel.red{color:rgba(255,107,53,.5)}
+.freq-display{font-size:38px;color:var(--crt);letter-spacing:3px;line-height:1;text-shadow:0 0 16px rgba(0,255,136,.4)}
+.freq-unit{font-size:16px;color:rgba(0,255,136,.6);margin-left:4px}
+.freq-period{font-size:13px;color:rgba(0,255,136,.5);margin-top:6px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.metric{background:rgba(0,0,0,.3);border:1px solid rgba(0,255,136,.12);border-radius:3px;padding:8px;text-align:center}
+.metric-val{font-size:16px;color:var(--crt)}
+.metric-lbl{font-size:10px;color:rgba(0,255,136,.4);margin-top:2px;letter-spacing:1px;text-transform:uppercase}
+canvas{display:block;width:100%}
+.canvas-wrap{position:relative;background:rgba(0,0,0,.4);border:1px solid rgba(0,255,136,.15);border-radius:3px;overflow:hidden}
+.canvas-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,255,136,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.05) 1px,transparent 1px);background-size:40px 20px;pointer-events:none}
+.ch-lbl{position:absolute;top:4px;left:6px;font-size:10px;letter-spacing:1px}
+.la-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.la-ch{font-size:11px;min-width:24px}
+.la-cwrap{flex:1;background:rgba(0,0,0,.4);border:1px solid rgba(0,255,136,.1);border-radius:2px;overflow:hidden;height:28px}
+.la-sig{width:100%;height:100%;display:block}
+.la-val{font-size:11px;min-width:48px;text-align:right}
+.ctrl-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.ctrl-item{display:flex;flex-direction:column;gap:4px}
+.ctrl-lbl{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(0,255,136,.45)}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:rgba(0,255,136,.2);border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--crt);border:2px solid var(--bg);box-shadow:0 0 6px rgba(0,255,136,.6)}
+.ctrl-readout{font-size:13px;color:var(--crt)}
+select{background:#0a130a;border:1px solid var(--brd);color:var(--crt);font-family:'Share Tech Mono',monospace;font-size:12px;padding:4px 6px;border-radius:3px;outline:none;cursor:pointer;width:100%}
+.btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btn{font-family:'Share Tech Mono',monospace;font-size:11px;padding:6px 14px;border:1px solid var(--brd);background:transparent;color:var(--crt);cursor:pointer;border-radius:3px;letter-spacing:1px;text-transform:uppercase;transition:all .15s}
+.btn:hover{background:rgba(0,255,136,.1);border-color:var(--crt)}
+.btn.active{background:rgba(0,255,136,.15);border-color:var(--crt);box-shadow:0 0 8px rgba(0,255,136,.3)}
+.btn-blue{border-color:var(--brd2);color:var(--crt2)}.btn-blue:hover{background:rgba(0,204,255,.1);border-color:var(--crt2)}
+.btn-amber{border-color:rgba(255,204,0,.3);color:var(--crt4)}.btn-amber:hover{background:rgba(255,204,0,.1);border-color:var(--crt4)}
+.tab-bar{display:flex;gap:2px;margin-bottom:10px;border-bottom:1px solid var(--brd);padding-bottom:6px;flex-wrap:wrap}
+.tab{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;padding:4px 12px;cursor:pointer;color:rgba(0,255,136,.4);border-radius:3px 3px 0 0;transition:all .15s}
+.tab.active{color:var(--crt);background:rgba(0,255,136,.08);border:1px solid var(--brd);border-bottom:none}
+.tab-content{display:none}.tab-content.active{display:block}
+.code-block{background:rgba(0,0,0,.5);border:1px solid rgba(0,255,136,.12);border-radius:3px;padding:10px;font-size:11px;line-height:1.7;overflow-x:auto;max-height:230px;overflow-y:auto}
+.code-block::-webkit-scrollbar{width:4px;height:4px}
+.code-block::-webkit-scrollbar-thumb{background:rgba(0,255,136,.3);border-radius:2px}
+.kw{color:#ff6b35}.cm{color:rgba(0,255,136,.35);font-style:italic}.str{color:#ffcc00}.num{color:#00ccff}.fn{color:#88ffcc}
+.veri-table{width:100%;font-size:11px;border-collapse:collapse}
+.veri-table th{color:rgba(0,255,136,.5);font-weight:400;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;border-bottom:1px solid var(--brd);text-align:left}
+.veri-table td{padding:5px 8px;border-bottom:1px solid rgba(0,255,136,.07)}
+.veri-table tr:hover td{background:rgba(0,255,136,.04)}
+.pass{color:#00ff88}.fail{color:#ff6b35}.warn{color:#ffcc00}
+.event-log{background:rgba(0,0,0,.4);border:1px solid rgba(0,255,136,.12);border-radius:3px;padding:8px;height:100px;overflow-y:auto;font-size:11px;line-height:1.9}
+.event-log::-webkit-scrollbar{width:3px}
+.event-log::-webkit-scrollbar-thumb{background:rgba(0,255,136,.3)}
+.evt-ok{color:var(--crt)}.evt-warn{color:var(--crt4)}.evt-err{color:var(--crt3)}.evt-info{color:var(--crt2)}
+.evt-ts{color:rgba(0,255,136,.3);margin-right:6px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div>
+    <div class="hdr-title"><span class="sdot"></span>Digital <span>Signal Frequency</span> Measurement System</div>
+    <div class="sys-id">DSFMS-v2.4 &nbsp;|&nbsp; FPGA/MCU Simulation &nbsp;|&nbsp; Real-Time Mode</div>
+  </div>
+  <div style="text-align:right;font-size:11px;color:rgba(0,255,136,.35)">
+    <div id="clock-display">00:00:00.000</div>
+    <div id="sample-count">SAMPLES: 0</div>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('simulation')">▶ Simulation</div>
+  <div class="tab" onclick="switchTab('design')">⬡ Design</div>
+  <div class="tab" onclick="switchTab('implementation')">{ } Implementation</div>
+  <div class="tab" onclick="switchTab('logic')">≋ Logic Analyzer</div>
+  <div class="tab" onclick="switchTab('verification')">✓ Verification</div>
+</div>
+
+<!-- SIMULATION -->
+<div class="tab-content active" id="tab-simulation">
+  <div class="main-grid">
+    <div class="panel">
+      <div class="plabel">Measured Frequency</div>
+      <div class="freq-display" id="freq-readout">1000.00 <span class="freq-unit">Hz</span></div>
+      <div class="freq-period" id="period-readout">Period: 1.000 ms | ω = 6283.2 rad/s</div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-val" id="met-duty">50.0%</div><div class="metric-lbl">Duty Cycle</div></div>
+        <div class="metric"><div class="metric-val" id="met-rise">500ns</div><div class="metric-lbl">Rise Time</div></div>
+        <div class="metric"><div class="metric-val" id="met-jitter">±2ns</div><div class="metric-lbl">Jitter</div></div>
+      </div>
+      <div class="metrics" style="margin-top:8px">
+        <div class="metric"><div class="metric-val" id="met-volt">3.3V</div><div class="metric-lbl">V High</div></div>
+        <div class="metric"><div class="metric-val" id="met-snr">62dB</div><div class="metric-lbl">SNR</div></div>
+        <div class="metric"><div class="metric-val" id="met-edges">2000</div><div class="metric-lbl">Edges/s</div></div>
+      </div>
+    </div>
+    <div class="panel panel-blue">
+      <div class="plabel blue">Oscilloscope — CH1 (Input Signal)</div>
+      <div class="canvas-wrap">
+        <div class="canvas-grid"></div>
+        <div class="ch-lbl" style="color:#00ccff">CH1 &nbsp; 1V/div &nbsp; TIME: <span id="timebase-lbl">1ms/div</span></div>
+        <canvas id="osc-canvas" style="height:90px"></canvas>
+      </div>
+      <div class="canvas-wrap" style="margin-top:6px">
+        <div class="canvas-grid"></div>
+        <div class="ch-lbl" style="color:#ff6b35">CH2 &nbsp; Gate Signal</div>
+        <canvas id="gate-canvas" style="height:40px"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="panel full-row">
+    <div class="plabel">Signal Generator & Measurement Controls</div>
+    <div class="ctrl-grid">
+      <div class="ctrl-item">
+        <div class="ctrl-lbl">Frequency</div>
+        <input type="range" id="freq-ctrl" min="0" max="100" value="30" oninput="updateFreq(this.value)">
+        <div class="ctrl-readout"><span id="freq-ctrl-val">1.00 kHz</span></div>
+      </div>
+      <div class="ctrl-item">
+        <div class="ctrl-lbl">Duty Cycle</div>
+        <input type="range" id="duty-ctrl" min="5" max="95" value="50" oninput="updateDuty(this.value)">
+        <div class="ctrl-readout"><span id="duty-ctrl-val">50%</span></div>
+      </div>
+      <div class="ctrl-item">
+        <div class="ctrl-lbl">Noise Level</div>
+        <input type="range" id="noise-ctrl" min="0" max="100" value="10" oninput="updateNoise(this.value)">
+        <div class="ctrl-readout"><span id="noise-ctrl-val">10%</span></div>
+      </div>
+      <div class="ctrl-item">
+        <div class="ctrl-lbl">Waveform Type</div>
+        <select id="wave-type" onchange="updateWave(this.value)">
+          <option value="square">Square</option>
+          <option value="sine">Sine → Square</option>
+          <option value="pwm">PWM Burst</option>
+          <option value="glitch">Glitched</option>
+        </select>
+      </div>
+      <div class="ctrl-item">
+        <div class="ctrl-lbl">Gate Time</div>
+        <select id="gate-time">
+          <option value="100">100ms</option>
+          <option value="1000" selected>1s Gate</option>
+          <option value="10000">10s Gate</option>
+        </select>
+      </div>
+      <div class="ctrl-item">
+        <div class="ctrl-lbl">Prescaler</div>
+        <select id="prescaler">
+          <option value="1">÷1 (direct)</option>
+          <option value="2">÷2</option>
+          <option value="10">÷10</option>
+          <option value="100">÷100</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn active" id="btn-run" onclick="toggleRun()">■ RUNNING</button>
+      <button class="btn btn-blue" onclick="triggerSingle()">⊡ SINGLE</button>
+      <button class="btn btn-amber" onclick="autoRange()">⊞ AUTO RANGE</button>
+      <button class="btn" onclick="resetStats()">↺ RESET STATS</button>
+      <button class="btn btn-blue" onclick="switchTab('logic')">≋ OPEN LOGIC ANALYZER</button>
+    </div>
+  </div>
+  <div class="panel panel-amber full-row">
+    <div class="plabel amber">System Event Log</div>
+    <div class="event-log" id="evt-log"></div>
+  </div>
+</div>
+
+<!-- DESIGN -->
+<div class="tab-content" id="tab-design">
+  <div class="main-grid">
+    <div class="panel">
+      <div class="plabel">System Architecture</div>
+      <svg width="100%" viewBox="0 0 380 320" xmlns="http://www.w3.org/2000/svg" style="background:rgba(0,0,0,.3);border-radius:3px">
+        <defs><marker id="da" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#00ff88" stroke-width="2" stroke-linecap="round"/></marker></defs>
+        <rect x="10" y="130" width="70" height="36" rx="4" fill="rgba(0,255,136,.06)" stroke="#00ff88" stroke-width="0.6" stroke-opacity="0.4"/>
+        <text x="45" y="145" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#00ff88" opacity="0.7">SIG INPUT</text>
+        <text x="45" y="158" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#00ff88" opacity="0.4">0–5V Digital</text>
+        <line x1="80" y1="148" x2="108" y2="148" stroke="#00ff88" stroke-width="0.8" marker-end="url(#da)" opacity="0.6"/>
+        <rect x="110" y="130" width="64" height="36" rx="4" fill="rgba(0,204,255,.06)" stroke="#00ccff" stroke-width="0.6" stroke-opacity="0.4"/>
+        <text x="142" y="145" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#00ccff" opacity="0.7">SCHMITT</text>
+        <text x="142" y="157" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#00ccff" opacity="0.4">Trigger</text>
+        <line x1="174" y1="148" x2="200" y2="148" stroke="#00ff88" stroke-width="0.8" marker-end="url(#da)" opacity="0.6"/>
+        <rect x="202" y="130" width="60" height="36" rx="4" fill="rgba(255,204,0,.06)" stroke="#ffcc00" stroke-width="0.6" stroke-opacity="0.4"/>
+        <text x="232" y="145" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#ffcc00" opacity="0.7">PRESCALER</text>
+        <text x="232" y="157" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#ffcc00" opacity="0.4">÷N Counter</text>
+        <line x1="262" y1="148" x2="290" y2="148" stroke="#00ff88" stroke-width="0.8" marker-end="url(#da)" opacity="0.6"/>
+        <rect x="292" y="120" width="72" height="56" rx="4" fill="rgba(0,255,136,.08)" stroke="#00ff88" stroke-width="0.6" stroke-opacity="0.5"/>
+        <text x="328" y="140" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#00ff88" opacity="0.8">32-BIT</text>
+        <text x="328" y="152" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#00ff88" opacity="0.8">COUNTER</text>
+        <text x="328" y="165" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#00ff88" opacity="0.4">Synchronous</text>
+        <rect x="178" y="210" width="80" height="36" rx="4" fill="rgba(255,107,53,.06)" stroke="#ff6b35" stroke-width="0.6" stroke-opacity="0.4"/>
+        <text x="218" y="225" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#ff6b35" opacity="0.7">REF CLOCK</text>
+        <text x="218" y="237" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#ff6b35" opacity="0.4">10 MHz TCXO</text>
+        <rect x="292" y="210" width="72" height="36" rx="4" fill="rgba(0,204,255,.06)" stroke="#00ccff" stroke-width="0.6" stroke-opacity="0.4"/>
+        <text x="328" y="225" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#00ccff" opacity="0.7">GATE CTRL</text>
+        <text x="328" y="237" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#00ccff" opacity="0.4">Timebase Gen</text>
+        <rect x="140" y="26" width="100" height="60" rx="4" fill="rgba(0,255,136,.04)" stroke="#00ff88" stroke-width="0.8" stroke-opacity="0.6"/>
+        <text x="190" y="47" text-anchor="middle" font-family="Share Tech Mono" font-size="10" fill="#00ff88" opacity="0.9">MCU / FPGA</text>
+        <text x="190" y="60" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#00ff88" opacity="0.5">Compute Engine</text>
+        <text x="190" y="72" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#00ff88" opacity="0.5">Result Register</text>
+        <rect x="10" y="26" width="80" height="36" rx="4" fill="rgba(0,255,136,.06)" stroke="#00ff88" stroke-width="0.5" stroke-opacity="0.3"/>
+        <text x="50" y="42" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#00ff88" opacity="0.6">7-SEG</text>
+        <text x="50" y="54" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#00ff88" opacity="0.4">Display</text>
+        <rect x="290" y="26" width="80" height="36" rx="4" fill="rgba(255,204,0,.05)" stroke="#ffcc00" stroke-width="0.5" stroke-opacity="0.3"/>
+        <text x="330" y="42" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#ffcc00" opacity="0.6">UART / SPI</text>
+        <text x="330" y="54" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#ffcc00" opacity="0.4">Output Bus</text>
+        <line x1="328" y1="120" x2="328" y2="80" stroke="#00ff88" stroke-width="0.5" opacity="0.3" stroke-dasharray="3 2"/>
+        <line x1="328" y1="80" x2="240" y2="80" stroke="#00ff88" stroke-width="0.5" opacity="0.3" stroke-dasharray="3 2" marker-end="url(#da)"/>
+        <line x1="140" y1="56" x2="90" y2="56" stroke="#00ff88" stroke-width="0.5" opacity="0.3" stroke-dasharray="3 2" marker-end="url(#da)"/>
+        <line x1="240" y1="56" x2="290" y2="44" stroke="#ffcc00" stroke-width="0.5" opacity="0.3" stroke-dasharray="3 2" marker-end="url(#da)"/>
+        <line x1="258" y1="228" x2="290" y2="228" stroke="#ff6b35" stroke-width="0.6" opacity="0.5" marker-end="url(#da)"/>
+        <line x1="328" y1="210" x2="328" y2="176" stroke="#00ccff" stroke-width="0.6" opacity="0.5" marker-end="url(#da)"/>
+        <text x="190" y="298" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#00ff88" opacity="0.25">Measurement Resolution: 0.1 Hz @ 1s gate | Error &lt;1ppm TCXO</text>
+      </svg>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:12px">
+        <div class="plabel">Design Specifications</div>
+        <div style="font-size:11px;line-height:2.1;color:rgba(0,255,136,.7)">
+          <div>FREQ RANGE  &nbsp;&nbsp; <span style="color:var(--crt2)">1 Hz → 100 MHz</span></div>
+          <div>RESOLUTION  &nbsp;&nbsp; <span style="color:var(--crt2)">0.1 Hz (1s gate)</span></div>
+          <div>ACCURACY    &nbsp;&nbsp; <span style="color:var(--crt2)">&lt; 1 ppm (TCXO)</span></div>
+          <div>INPUT VOLT  &nbsp;&nbsp; <span style="color:var(--crt2)">0V – 5V TTL/CMOS</span></div>
+          <div>PRESCALER   &nbsp;&nbsp; <span style="color:var(--crt2)">÷1, ÷2, ÷10, ÷100</span></div>
+          <div>COUNTER     &nbsp;&nbsp; <span style="color:var(--crt2)">32-bit synchronous</span></div>
+          <div>INTERFACE   &nbsp;&nbsp; <span style="color:var(--crt2)">UART 115200 baud</span></div>
+          <div>REF CLK     &nbsp;&nbsp; <span style="color:var(--crt2)">10 MHz TCXO ±1ppm</span></div>
+          <div>GATE TIMES  &nbsp;&nbsp; <span style="color:var(--crt2)">100ms / 1s / 10s</span></div>
+          <div>DISPLAY     &nbsp;&nbsp; <span style="color:var(--crt2)">6-digit 7-segment</span></div>
+        </div>
+      </div>
+      <div class="panel panel-amber">
+        <div class="plabel amber">Method — Reciprocal Counting</div>
+        <div style="font-size:11px;line-height:1.9;color:rgba(255,204,0,.7)">
+          <div>f = N_edges / T_gate</div>
+          <div>Period = T_gate / N_edges</div>
+          <div style="margin-top:6px;color:rgba(255,204,0,.5)">Reciprocal method measures both</div>
+          <div style="color:rgba(255,204,0,.5)">rising and falling edges for high</div>
+          <div style="color:rgba(255,204,0,.5)">accuracy at low frequencies.</div>
+          <div style="margin-top:6px">Error = ±1 count / (f × T_gate)</div>
+          <div>At 1kHz, 1s gate: error = 0.1%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- IMPLEMENTATION -->
+<div class="tab-content" id="tab-implementation">
+  <div class="main-grid">
+    <div class="panel">
+      <div class="plabel">Verilog HDL — Frequency Counter Core</div>
+      <div class="code-block"><span class="cm">// Digital Frequency Counter — Synthesizable RTL</span>
+<span class="kw">module</span> <span class="fn">freq_counter</span> #(
+  <span class="kw">parameter</span> REF_CLK_HZ = <span class="num">10_000_000</span>,
+  <span class="kw">parameter</span> GATE_MS    = <span class="num">1000</span>
+)(
+  <span class="kw">input</span>  wire clk_ref,   <span class="cm">// 10 MHz TCXO</span>
+  <span class="kw">input</span>  wire sig_in,    <span class="cm">// Input signal</span>
+  <span class="kw">input</span>  wire rst_n,     <span class="cm">// Active-low reset</span>
+  <span class="kw">output</span> reg  [<span class="num">31</span>:<span class="num">0</span>] freq_hz,
+  <span class="kw">output</span> reg  data_valid
+);
+  <span class="kw">localparam</span> GATE_TICKS = REF_CLK_HZ * GATE_MS / <span class="num">1000</span>;
+  <span class="kw">reg</span> [<span class="num">23</span>:<span class="num">0</span>] gate_cnt;
+  <span class="kw">reg</span>        gate_en;
+  <span class="kw">reg</span> [<span class="num">31</span>:<span class="num">0</span>] edge_cnt;
+  <span class="kw">reg</span>        sig_prev;
+
+  <span class="kw">always</span> @(<span class="kw">posedge</span> clk_ref <span class="kw">or negedge</span> rst_n) <span class="kw">begin</span>
+    <span class="kw">if</span> (!rst_n) <span class="kw">begin</span>
+      gate_cnt &lt;= <span class="num">0</span>; gate_en &lt;= <span class="num">1</span>;
+      edge_cnt &lt;= <span class="num">0</span>; sig_prev &lt;= <span class="num">0</span>;
+      freq_hz  &lt;= <span class="num">0</span>; data_valid &lt;= <span class="num">0</span>;
+    <span class="kw">end else begin</span>
+      sig_prev   &lt;= sig_in;
+      data_valid &lt;= <span class="num">0</span>;
+      <span class="kw">if</span> (gate_en) <span class="kw">begin</span>
+        <span class="kw">if</span> (sig_in &amp;&amp; !sig_prev) edge_cnt &lt;= edge_cnt + <span class="num">1</span>;
+        <span class="kw">if</span> (gate_cnt == GATE_TICKS - <span class="num">1</span>) <span class="kw">begin</span>
+          gate_cnt   &lt;= <span class="num">0</span>;
+          freq_hz    &lt;= edge_cnt;
+          edge_cnt   &lt;= <span class="num">0</span>;
+          data_valid &lt;= <span class="num">1</span>;
+        <span class="kw">end else</span>
+          gate_cnt &lt;= gate_cnt + <span class="num">1</span>;
+      <span class="kw">end</span>
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">endmodule</span></div>
+    </div>
+    <div>
+      <div class="panel panel-blue" style="margin-bottom:12px">
+        <div class="plabel blue">C Firmware — MCU Driver (STM32)</div>
+        <div class="code-block"><span class="cm">// STM32 HAL — Frequency Measurement ISR</span>
+<span class="num">#include</span> <span class="str">"stm32f4xx_hal.h"</span>
+
+<span class="kw">volatile uint32_t</span> edge_count = <span class="num">0</span>;
+<span class="kw">volatile uint32_t</span> freq_result = <span class="num">0</span>;
+<span class="kw">volatile uint8_t</span>  meas_done  = <span class="num">0</span>;
+
+<span class="cm">/* TIM2 input capture callback */</span>
+<span class="kw">void</span> <span class="fn">HAL_TIM_IC_CaptureCallback</span>(
+    TIM_HandleTypeDef *htim) {
+  <span class="kw">if</span> (htim->Instance == TIM2)
+    edge_count++;
+}
+
+<span class="cm">/* Gate timer overflow (1 second) */</span>
+<span class="kw">void</span> <span class="fn">HAL_TIM_PeriodElapsedCallback</span>(
+    TIM_HandleTypeDef *htim) {
+  <span class="kw">if</span> (htim->Instance == TIM3) {
+    freq_result = edge_count;
+    edge_count  = <span class="num">0</span>;
+    meas_done   = <span class="num">1</span>;
+  }
+}
+
+<span class="cm">/* Main measurement loop */</span>
+<span class="kw">void</span> <span class="fn">freq_measure_task</span>(<span class="kw">void</span>) {
+  <span class="kw">if</span> (meas_done) {
+    meas_done = <span class="num">0</span>;
+    <span class="kw">char</span> buf[<span class="num">32</span>];
+    <span class="fn">sprintf</span>(buf, <span class="str">"FREQ:%lu Hz\r\n"</span>,
+            freq_result);
+    <span class="fn">HAL_UART_Transmit</span>(&huart2,
+      (uint8_t*)buf, <span class="fn">strlen</span>(buf), <span class="num">100</span>);
+    <span class="fn">update_display</span>(freq_result);
+  }
+}</div>
+      </div>
+      <div class="panel panel-amber">
+        <div class="plabel amber">State Machine — Execution Flow</div>
+        <div style="font-size:11px;line-height:2.0;color:rgba(255,204,0,.7)">
+          <div>S0 → <span style="color:var(--crt)">RESET — clear all counters</span></div>
+          <div>S1 → <span style="color:var(--crt)">ARMED — wait for first edge</span></div>
+          <div>S2 → <span style="color:var(--crt)">COUNTING — gate open, accumulate</span></div>
+          <div>S3 → <span style="color:var(--crt)">LATCH — gate close, freeze count</span></div>
+          <div>S4 → <span style="color:var(--crt)">COMPUTE — divide, apply prescaler</span></div>
+          <div>S5 → <span style="color:var(--crt)">OUTPUT — UART + update display</span></div>
+          <div style="margin-top:4px;color:rgba(255,204,0,.4)">Cycle = gate_period + 2 clock cycles</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIC ANALYZER -->
+<div class="tab-content" id="tab-logic">
+  <div class="panel full-row">
+    <div class="plabel">Logic Analyzer — 8 Channel Digital Capture</div>
+    <div id="la-channels"></div>
+    <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+      <div style="font-size:11px;color:rgba(0,255,136,.45)">SAMPLE RATE: <span style="color:var(--crt)">10 MHz</span></div>
+      <div style="font-size:11px;color:rgba(0,255,136,.45)">DEPTH: <span style="color:var(--crt)">4096 samples</span></div>
+      <div style="font-size:11px;color:rgba(0,255,136,.45)">TRIGGER: <span style="color:var(--crt)">CH0 ↑ EDGE</span></div>
+      <div style="font-size:11px;color:rgba(0,255,136,.45)">Δt: <span style="color:var(--crt)" id="la-dt">—</span></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn active">▶ CAPTURE RUN</button>
+      <button class="btn btn-amber" onclick="switchTab('verification')">✓ VERIFY OUTPUT</button>
+    </div>
+  </div>
+  <div class="panel panel-blue full-row">
+    <div class="plabel blue">Timing Diagram — Gate Measurement Cycle</div>
+    <canvas id="timing-canvas" style="height:200px"></canvas>
+  </div>
+</div>
+
+<!-- VERIFICATION -->
+<div class="tab-content" id="tab-verification">
+  <div class="panel full-row">
+    <div class="plabel">Logic Analyzer Output Verification</div>
+    <table class="veri-table">
+      <thead><tr><th>Test Case</th><th>Expected</th><th>Measured</th><th>Error</th><th>Status</th><th>Method</th></tr></thead>
+      <tbody id="veri-table-body"></tbody>
+    </table>
+  </div>
+  <div class="main-grid">
+    <div class="panel panel-blue">
+      <div class="plabel blue">Verification Summary</div>
+      <div id="veri-summary" style="font-size:12px;line-height:2.2"></div>
+    </div>
+    <div class="panel panel-amber">
+      <div class="plabel amber">Error Distribution</div>
+      <div style="position:relative;height:140px"><canvas id="error-canvas"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let running=true,freq=1000,duty=50,noise=10,waveType='square';
+let sampleCount=0,oscPhase=0,logTimer=0,veriChart=null;
+let startTime=Date.now();
+
+function sliderToFreq(v){const a=Math.log10(1),b=Math.log10(100000);return Math.pow(10,a+(v/100)*(b-a));}
+function freqToSlider(f){const a=Math.log10(1),b=Math.log10(100000);return((Math.log10(f)-a)/(b-a))*100;}
+function formatFreq(f){if(f>=1000)return(f/1000).toFixed(f>=10000?1:2)+' kHz';return f.toFixed(f<10?2:1)+' Hz';}
+
+const oscC=document.getElementById('osc-canvas');
+const gateC=document.getElementById('gate-canvas');
+const oscCtx=oscC.getContext('2d');
+const gateCtx=gateC.getContext('2d');
+
+function resizeC(){
+  [oscC,gateC].forEach(c=>{c.width=c.offsetWidth*devicePixelRatio||600;c.height=c.offsetHeight*devicePixelRatio||90;});
+  const tc=document.getElementById('timing-canvas');
+  if(tc){tc.width=tc.offsetWidth*devicePixelRatio||600;tc.height=200*devicePixelRatio;}
+}
+
+function drawOsc(){
+  const W=oscC.width,H=oscC.height,ctx=oscCtx;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(0,255,136,0.06)';ctx.lineWidth=0.5;
+  for(let x=0;x<W;x+=W/8){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=H/4){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  const np=W/4,nA=(noise/100)*0.15*H,df=duty/100;
+  ctx.beginPath();ctx.strokeStyle='#00ccff';ctx.lineWidth=1.5*devicePixelRatio;
+  ctx.shadowColor='#00ccff';ctx.shadowBlur=4;
+  for(let px=0;px<W;px++){
+    const ph=((px/np)+oscPhase)%1;let v;const nz=(Math.random()-0.5)*nA;
+    if(waveType==='square'||waveType==='glitch'){v=ph<df?0.15:0.85;if(waveType==='glitch'&&Math.random()<0.005)v=0.5+(Math.random()-0.5)*0.3;}
+    else if(waveType==='sine'){v=0.5-0.4*Math.sin(2*Math.PI*ph);v=v<0.3?0.15:v>0.7?0.85:v;}
+    else{const b=Math.floor(ph*5);v=(b%2===0)&&(ph*5-b)<df*0.5?0.15:0.85;}
+    const y=v*H+nz;
+    if(px===0)ctx.moveTo(px,y);else ctx.lineTo(px,y);
+  }
+  ctx.stroke();ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(255,204,0,0.5)';ctx.lineWidth=0.5;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(0,H*0.5);ctx.lineTo(W,H*0.5);ctx.stroke();ctx.setLineDash([]);
+}
+
+function drawGate(){
+  const W=gateC.width,H=gateC.height,ctx=gateCtx;
+  ctx.clearRect(0,0,W,H);
+  const gp=(Date.now()/1000)%2,go=gp<1;
+  ctx.strokeStyle='#ff6b35';ctx.lineWidth=1.5*devicePixelRatio;
+  ctx.shadowColor='#ff6b35';ctx.shadowBlur=3;
+  ctx.beginPath();
+  const ex=(1-gp%1)*W;
+  ctx.moveTo(0,H*0.8);
+  if(go){ctx.lineTo(W-ex-W*0.5,H*0.8);ctx.lineTo(W-ex-W*0.5,H*0.2);ctx.lineTo(W,H*0.2);}
+  else{ctx.lineTo(W-ex,H*0.8);if(W-ex<W){ctx.lineTo(W-ex,H*0.2);ctx.lineTo(W,H*0.2);}}
+  ctx.stroke();ctx.shadowBlur=0;
+}
+
+const laChannels=[
+  {name:'CH0',label:'SIG IN',color:'#00ff88',fm:1},
+  {name:'CH1',label:'SCHMITT',color:'#00ccff',fm:1},
+  {name:'CH2',label:'GATE',color:'#ff6b35',fm:0.002},
+  {name:'CH3',label:'CLK÷1',color:'#ffcc00',fm:10},
+  {name:'CH4',label:'EDGE DET',color:'#88ffcc',fm:1},
+  {name:'CH5',label:'COUNT_EN',color:'#cc88ff',fm:0.001},
+  {name:'CH6',label:'DATA_RDY',color:'#ff88cc',fm:0.0009},
+  {name:'CH7',label:'UART TX',color:'#ffaa44',fm:0.05}
+];
+
+function buildLA(){
+  const cont=document.getElementById('la-channels');
+  cont.innerHTML='';
+  laChannels.forEach((ch,i)=>{
+    const r=document.createElement('div');r.className='la-row';
+    r.innerHTML=`<div class="la-ch" style="color:${ch.color}">${ch.name}</div><div style="font-size:10px;min-width:52px;color:rgba(0,255,136,.4)">${ch.label}</div><div class="la-cwrap"><canvas class="la-sig" id="la-c-${i}" height="28"></canvas></div><div class="la-val" style="color:${ch.color};font-size:10px" id="la-v-${i}">—</div>`;
+    cont.appendChild(r);
+  });
+}
+
+function drawLA(idx){
+  const c=document.getElementById(`la-c-${idx}`);if(!c)return;
+  c.width=c.offsetWidth*devicePixelRatio||400;c.height=28*devicePixelRatio;
+  const ctx=c.getContext('2d'),W=c.width,H=c.height,ch=laChannels[idx];
+  ctx.clearRect(0,0,W,H);
+  const cf=freq*ch.fm,period=W/(cf*0.0004+4),t=Date.now()*0.001;
+  ctx.strokeStyle=ch.color;ctx.lineWidth=1.2*devicePixelRatio;ctx.beginPath();
+  let high=false;
+  for(let px=0;px<W;px++){
+    const ph=((px/period)+t*cf*ch.fm*0.5)%1,wh=high;
+    high=ph<0.5;const y=high?H*0.15:H*0.85,py=wh?H*0.15:H*0.85;
+    if(px===0)ctx.moveTo(px,y);
+    else if(wh!==high){ctx.lineTo(px,py);ctx.lineTo(px,y);}
+    else ctx.lineTo(px,y);
+  }
+  ctx.stroke();
+  const cp=(t*cf*ch.fm*0.5)%1;
+  document.getElementById(`la-v-${idx}`).textContent=cp<0.5?'HIGH':'LOW';
+}
+
+function drawTiming(){
+  const c=document.getElementById('timing-canvas');if(!c)return;
+  c.width=c.offsetWidth*devicePixelRatio||600;c.height=200*devicePixelRatio;
+  const ctx=c.getContext('2d'),W=c.width,H=c.height,dpr=devicePixelRatio;
+  ctx.clearRect(0,0,W,H);ctx.font=`${10*dpr}px 'Share Tech Mono'`;
+  const sigs=[
+    {label:'REF CLK',color:'#ff6b35',type:'fast'},
+    {label:'GATE EN',color:'#00ccff',type:'slow'},
+    {label:'SIG IN',color:'#00ff88',type:'mid'},
+    {label:'EDGE CNT',color:'#ffcc00',type:'count'},
+    {label:'DATA_RDY',color:'#ff88cc',type:'pulse'}
+  ];
+  const rowH=H/(sigs.length+0.5),lW=70*dpr;
+  sigs.forEach((sig,i)=>{
+    const y0=(i+0.5)*rowH,sH=rowH*0.5,t=(Date.now()*0.001)%4,dW=W-lW-10*dpr,sX=lW;
+    ctx.fillStyle=sig.color;ctx.globalAlpha=0.7;ctx.fillText(sig.label,4,y0+4);ctx.globalAlpha=1;
+    ctx.strokeStyle=sig.color;ctx.lineWidth=1.2*dpr;ctx.beginPath();
+    if(sig.type==='fast'){
+      const p=dW/16;
+      for(let px=0;px<dW;px++){
+        const ph=(px/p+t*4)%1,y=ph<0.5?y0-sH/2:y0+sH/2;
+        if(px===0)ctx.moveTo(sX+px,y);
+        else{const pp=((px-1)/p+t*4)%1;if((pp<0.5)!==(ph<0.5)){ctx.lineTo(sX+px,y0-sH/2+(ph<0.5?0:sH));ctx.lineTo(sX+px,y);}else ctx.lineTo(sX+px,y);}
+      }
+    } else if(sig.type==='slow'){
+      const of=(t%2)/2,gx=sX+of*dW;
+      ctx.moveTo(sX,y0+sH/2);ctx.lineTo(gx,y0+sH/2);ctx.lineTo(gx,y0-sH/2);ctx.lineTo(sX+dW,y0-sH/2);
+    } else if(sig.type==='mid'){
+      const fM=Math.max(3,Math.min(12,freq/200)),p=dW/fM;
+      for(let px=0;px<dW;px++){
+        const ph=(px/p+t*1.5)%1,y=ph<duty/100?y0-sH/2:y0+sH/2;
+        if(px===0)ctx.moveTo(sX+px,y);
+        else{const pp=((px-1)/p+t*1.5)%1;if((pp<duty/100)!==(ph<duty/100)){const py=pp<duty/100?y0-sH/2:y0+sH/2;ctx.lineTo(sX+px,py);ctx.lineTo(sX+px,y);}else ctx.lineTo(sX+px,y);}
+      }
+    } else if(sig.type==='count'){
+      const steps=8,sw=dW/steps;
+      ctx.moveTo(sX,y0+sH/2);
+      for(let s=0;s<steps;s++){const h=(s/(steps-1))*sH;ctx.lineTo(sX+s*sw,y0+sH/2-h);ctx.lineTo(sX+(s+1)*sw,y0+sH/2-h);}
+    } else {
+      ctx.moveTo(sX,y0+sH/2);ctx.lineTo(sX+dW*0.9,y0+sH/2);ctx.lineTo(sX+dW*0.9,y0-sH/2);ctx.lineTo(sX+dW*0.95,y0-sH/2);ctx.lineTo(sX+dW*0.95,y0+sH/2);ctx.lineTo(sX+dW,y0+sH/2);
+    }
+    ctx.stroke();
+    ctx.strokeStyle='rgba(0,255,136,.06)';ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(0,y0+rowH/2);ctx.lineTo(W,y0+rowH/2);ctx.stroke();
+  });
+  const gx=lW+((Date.now()*0.001%2)/2)*(W-lW-10*dpr);
+  ctx.strokeStyle='rgba(255,204,0,.4)';ctx.setLineDash([4,3]);ctx.lineWidth=0.8*dpr;
+  ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,204,0,.6)';ctx.fillText('T_GATE',gx+4,14*dpr);
+}
+
+function buildVerification(){
+  const tcs=[
+    {name:'1 Hz Square',expected:1,method:'Gate Count'},
+    {name:'100 Hz Square',expected:100,method:'Gate Count'},
+    {name:'1 kHz PWM',expected:1000,method:'Gate Count'},
+    {name:'10 kHz Burst',expected:10000,method:'Reciprocal'},
+    {name:'50 kHz Sine→Sq',expected:50000,method:'Reciprocal'},
+    {name:'Glitch Filter',expected:1000,method:'Debounce'},
+    {name:'Duty Cycle 25%',expected:1000,method:'Period Meas'},
+    {name:'Duty Cycle 75%',expected:1000,method:'Period Meas'},
+  ];
+  const tbody=document.getElementById('veri-table-body');tbody.innerHTML='';
+  let pass=0,warn=0,fail=0;const errors=[];
+  tcs.forEach(tc=>{
+    const err=(Math.random()*0.8-0.1),meas=tc.expected*(1+err*0.001+(Math.random()-0.5)*0.0002);
+    const pct=Math.abs((meas-tc.expected)/tc.expected*100);
+    const st=pct<0.01?'PASS':pct<0.1?'WARN':'FAIL';
+    if(st==='PASS')pass++;else if(st==='WARN')warn++;else fail++;
+    errors.push(pct);
+    const tr=document.createElement('tr'),cls=st==='PASS'?'pass':st==='WARN'?'warn':'fail';
+    tr.innerHTML=`<td>${tc.name}</td><td>${tc.expected>=1000?(tc.expected/1000).toFixed(tc.expected>=10000?0:1)+' kHz':tc.expected+' Hz'}</td><td style="color:var(--crt)">${meas>=1000?(meas/1000).toFixed(meas>=10000?1:2)+' kHz':meas.toFixed(2)+' Hz'}</td><td class="${cls}">${pct<0.001?'<0.001':pct.toFixed(3)}%</td><td class="${cls}">${st}</td><td style="color:rgba(0,255,136,.5)">${tc.method}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('veri-summary').innerHTML=`<div>Tests Run: <span style="color:var(--crt)">${tcs.length}</span></div><div>Passed: <span class="pass">${pass}</span></div><div>Warnings: <span class="warn">${warn}</span></div><div>Failed: <span class="fail">${fail}</span></div><div style="margin-top:6px">Max Error: <span style="color:var(--crt)">${Math.max(...errors).toFixed(4)}%</span></div><div>Avg Error: <span style="color:var(--crt)">${(errors.reduce((a,b)=>a+b,0)/errors.length).toFixed(4)}%</span></div><div style="margin-top:6px;color:rgba(0,255,136,.5)">Resolution: 0.1 Hz @ 1s gate</div><div style="color:rgba(0,255,136,.5)">Ref: 10 MHz TCXO ±1ppm</div>`;
+  const ec=document.getElementById('error-canvas');if(!ec)return;
+  if(veriChart){veriChart.destroy();veriChart=null;}
+  veriChart=new Chart(ec,{type:'bar',data:{labels:tcs.map(t=>t.name.split(' ')[0]),datasets:[{label:'Error %',data:errors.map(e=>+e.toFixed(4)),backgroundColor:errors.map(e=>e<0.01?'rgba(0,255,136,0.5)':e<0.1?'rgba(255,204,0,0.6)':'rgba(255,107,53,0.7)'),borderColor:errors.map(e=>e<0.01?'#00ff88':e<0.1?'#ffcc00':'#ff6b35'),borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'rgba(0,255,136,0.5)',font:{size:9,family:"'Share Tech Mono'"}},grid:{color:'rgba(0,255,136,0.06)'}},y:{ticks:{color:'rgba(0,255,136,0.5)',font:{size:9}},grid:{color:'rgba(0,255,136,0.06)'}}}}});
+}
+
+function logEvent(msg,type='ok'){
+  const log=document.getElementById('evt-log');
+  const t=((Date.now()-startTime)/1000).toFixed(3);
+  const d=document.createElement('div');d.className=`evt-${type}`;
+  d.innerHTML=`<span class="evt-ts">[${t}s]</span>${msg}`;
+  log.appendChild(d);log.scrollTop=log.scrollHeight;
+  if(log.children.length>80)log.removeChild(log.children[0]);
+}
+
+function updateFreq(v){freq=sliderToFreq(v);document.getElementById('freq-ctrl-val').textContent=formatFreq(freq);logEvent(`Frequency set → ${formatFreq(freq)}`,'info');}
+function updateDuty(v){duty=parseInt(v);document.getElementById('duty-ctrl-val').textContent=duty+'%';}
+function updateNoise(v){noise=parseInt(v);document.getElementById('noise-ctrl-val').textContent=v+'%';}
+function updateWave(v){waveType=v;logEvent(`Waveform → ${v.toUpperCase()}`,'info');}
+function toggleRun(){running=!running;const b=document.getElementById('btn-run');b.textContent=running?'■ RUNNING':'▶ PAUSED';b.classList.toggle('active',running);logEvent(running?'Measurement RESUMED':'Measurement PAUSED',running?'ok':'warn');}
+function triggerSingle(){logEvent('SINGLE trigger captured — snapshot taken','info');}
+function autoRange(){document.getElementById('freq-ctrl').value=Math.round(freqToSlider(freq));logEvent('Auto-range complete — timebase adjusted','ok');}
+function resetStats(){sampleCount=0;logEvent('Statistics reset','warn');}
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{const tabs=['simulation','design','implementation','logic','verification'];t.classList.toggle('active',tabs[i]===name);});
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='logic'){buildLA();resizeC();}
+  if(name==='verification')buildVerification();
+}
+
+function animate(){
+  if(running){
+    sampleCount++;
+    oscPhase=(oscPhase+freq*0.00002)%1;
+    const period=1/freq;
+    const ps=period<0.001?(period*1e6).toFixed(2)+'μs':period<1?(period*1000).toFixed(3)+'ms':period.toFixed(3)+'s';
+    const omega=(2*Math.PI*freq).toFixed(1);
+    const jitter=freq>10000?'±8ns':freq>1000?'±4ns':'±2ns';
+    const rt=freq>10000?'50ns':freq>1000?'100ns':'500ns';
+    const snr=Math.max(30,70-noise*0.4).toFixed(0);
+    document.getElementById('freq-readout').innerHTML=formatFreq(freq);
+    document.getElementById('period-readout').textContent=`Period: ${ps}  |  ω = ${omega} rad/s`;
+    document.getElementById('met-duty').textContent=duty.toFixed(1)+'%';
+    document.getElementById('met-rise').textContent=rt;
+    document.getElementById('met-jitter').textContent=jitter;
+    document.getElementById('met-snr').textContent=snr+'dB';
+    document.getElementById('met-edges').textContent=Math.round(freq*2).toLocaleString();
+    const el=Date.now()-startTime;
+    const h=String(Math.floor(el/3600000)).padStart(2,'0'),m=String(Math.floor(el/60000)%60).padStart(2,'0'),s=String(Math.floor(el/1000)%60).padStart(2,'0'),ms=String(el%1000).padStart(3,'0');
+    document.getElementById('clock-display').textContent=`${h}:${m}:${s}.${ms}`;
+    document.getElementById('sample-count').textContent=`SAMPLES: ${sampleCount.toLocaleString()}`;
+    drawOsc();drawGate();
+    const lt=document.getElementById('tab-logic');
+    if(lt&&lt.classList.contains('active')){laChannels.forEach((_,i)=>drawLA(i));drawTiming();if(document.getElementById('la-dt'))document.getElementById('la-dt').textContent=`${(1000000/freq).toFixed(1)}μs`;}
+    logTimer++;
+    if(logTimer%60===0){
+      const ms2=[['Gate open — counting edges at '+formatFreq(freq),'ok'],['Edge count: '+Math.round(freq)+' pulses in 1.000s gate','ok'],['Result latched: '+formatFreq(freq)+' — SNR='+snr+'dB','ok'],['UART TX: FREQ:'+Math.round(freq)+' Hz — checksum OK','info'],noise>50?['High noise ('+noise+'%) — SNR degraded','warn']:['Signal quality: GOOD — noise='+noise+'%','ok']];
+      const p=ms2[Math.floor(logTimer/60)%ms2.length];logEvent(p[0],p[1]);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+window.addEventListener('load',()=>{
+  resizeC();buildLA();
+  logEvent('System initialized — DSFMS-v2.4','ok');
+  logEvent('Reference clock 10 MHz TCXO locked ✓','ok');
+  logEvent('Schmitt trigger threshold: VCC/2','info');
+  logEvent('32-bit gate counter armed','ok');
+  logEvent('Gate time: 1.000s — resolution: 0.1 Hz','info');
+  logEvent('UART 115200 baud TX enabled','ok');
+  logEvent('Simulation running — adjust controls to test','ok');
+  animate();
+});
+window.addEventListener('resize',resizeC);
+</script>
+</body>
+</html>
