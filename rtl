@@ -52,3 +52,35 @@ module schmitt_trigger (
     else if (shift_reg == 2'b00) sig_clean <= 0;
   end
 endmodule
+//prescaler
+module prescaler #(
+  parameter DIV = 1
+)(
+  input  wire clk_in,
+  output reg  clk_out
+);
+  reg [$clog2(DIV)-1:0] cnt;
+  always @(posedge clk_in) begin
+    if (cnt == DIV-1) begin
+      cnt     <= 0;
+      clk_out <= ~clk_out;
+    end else cnt <= cnt + 1;
+  end
+endmodule
+//gate control
+module gate_controller #(
+  parameter CLK_HZ   = 10_000_000,
+  parameter GATE_MS  = 1000
+)(
+  input  wire clk,
+  input  wire rst_n,
+  output reg  gate_en
+);
+  localparam TICKS = CLK_HZ * GATE_MS / 1000;
+  reg [23:0] cnt;
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin cnt <= 0; gate_en <= 1; end
+    else if (cnt == TICKS-1) begin cnt <= 0; gate_en <= ~gate_en; end
+    else cnt <= cnt + 1;
+  end
+endmodule
