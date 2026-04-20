@@ -1,0 +1,54 @@
+// Digital Frequency Counter — Synthesizable RTL module freq_counter 
+#( parameter REF_CLK_HZ = 10_000_000, parameter GATE_MS = 1000 )
+( input wire clk_ref, // 10 MHz TCXO
+ input wire sig_in, // Input signal 
+ input wire rst_n, // Active-low reset
+ output reg [31:0] freq_hz, 
+ output reg data_valid ); 
+localparam GATE_TICKS = REF_CLK_HZ * GATE_MS / 1000;
+reg [23:0] gate_cnt;
+reg gate_en;
+reg [31:0] edge_cnt;
+reg sig_prev;
+always @(posedge clk_ref or negedge rst_n) begin
+if (!rst_n)
+  begin 
+gate_cnt <= 0; 
+gate_en <= 1; 
+edge_cnt <= 0; 
+sig_prev <= 0; 
+freq_hz <= 0;
+data_valid <= 0; 
+end 
+else 
+  begin 
+sig_prev <= sig_in; 
+data_valid <= 0; 
+if (gate_en) begin
+if (sig_in && !sig_prev) 
+  edge_cnt <= edge_cnt + 1; 
+if (gate_cnt == GATE_TICKS - 1) begin
+gate_cnt <= 0; 
+freq_hz <= edge_cnt; 
+edge_cnt <= 0; 
+data_valid <= 1;
+end
+else 
+  gate_cnt <= gate_cnt + 1; 
+end 
+end 
+end 
+endmodule
+//schmitt trigger (short module)
+module schmitt_trigger (
+  input  wire clk,
+  input  wire sig_in,
+  output reg  sig_clean
+);
+  reg [1:0] shift_reg;
+  always @(posedge clk) begin
+    shift_reg <= {shift_reg[0], sig_in};
+    if (shift_reg == 2'b11) sig_clean <= 1;
+    else if (shift_reg == 2'b00) sig_clean <= 0;
+  end
+endmodule
