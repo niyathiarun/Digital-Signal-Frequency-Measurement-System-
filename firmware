@@ -1,0 +1,58 @@
+/ STM32 HAL — Frequency Measurement ISR 
+#include "stm32f4xx_hal.h" volatile uint32_t 
+edge_count = 0; volatile uint32_t 
+freq_result = 0; volatile uint8_t 
+meas_done = 0; /* TIM2 input capture callback */ 
+void HAL_TIM_IC_CaptureCallback( TIM_HandleTypeDef *htim)
+{
+if (htim->Instance == TIM2) 
+edge_count++; } /* Gate timer overflow (1 second) */ 
+void HAL_TIM_PeriodElapsedCallback( TIM_HandleTypeDef *htim) 
+{ 
+if (htim->Instance == TIM3) {
+freq_result = edge_count;
+edge_count = 0;
+meas_done = 1;
+} 
+} 
+/* Main measurement loop */
+void freq_measure_task(void) 
+{ 
+if (meas_done) {
+meas_done = 0; 
+char buf[32]; 
+sprintf(buf, "FREQ:%lu Hz\r\n", freq_result); 
+HAL_UART_Transmit(&huart2, (uint8_t*)buf, strlen(buf), 100); 
+update_display(freq_result);
+} 
+}
+
+/freq_measure.h
+#ifndef FREQ_MEASURE_H
+#define FREQ_MEASURE_H
+
+#include "stm32f4xx_hal.h"
+
+extern volatile uint32_t freq_result;
+extern volatile uint8_t  meas_done;
+
+void freq_measure_task(void);
+void update_display(uint32_t freq_hz);
+
+#endif
+
+/uart_output
+#include "freq_measure.h"
+#include <stdio.h>
+#include <string.h>
+
+extern UART_HandleTypeDef huart2;
+
+void uart_send_freq(uint32_t freq_hz) {
+  char buf[64];
+  if (freq_hz >= 1000)
+    sprintf(buf, "FREQ: %.3f kHz\r\n", freq_hz / 1000.0f);
+  else
+    sprintf(buf, "FREQ: %lu Hz\r\n", freq_hz);
+  HAL_UART_Transmit(&huart2, (uint8_t*)buf, strlen(buf), 100);
+}
