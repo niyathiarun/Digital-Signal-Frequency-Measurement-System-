@@ -39,6 +39,7 @@ end
 end 
 end 
 endmodule
+
 //schmitt trigger (short module)
 module schmitt_trigger (
   input  wire clk,
@@ -52,6 +53,7 @@ module schmitt_trigger (
     else if (shift_reg == 2'b00) sig_clean <= 0;
   end
 endmodule
+
 //prescaler
 module prescaler #(
   parameter DIV = 1
@@ -67,6 +69,7 @@ module prescaler #(
     end else cnt <= cnt + 1;
   end
 endmodule
+
 //gate control
 module gate_controller #(
   parameter CLK_HZ   = 10_000_000,
