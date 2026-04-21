@@ -4,13 +4,11 @@ A fully simulated Digital Signal Frequency Measurement System covering
 hardware design, RTL implementation, firmware, logic analysis, and
 automated verification — all running in a single interactive web page.
 
-![DSFMS Screenshot](assets/screenshot.png)
-
 ---
 
 ## Live Demo
 
-Open `simulation/dsfms.html` in any modern browser. No server needed.
+Open `https://niyathiarun.github.io/dsfms/simulation/dsfms.html` in any modern browser. No server needed.
 
 ---
 
